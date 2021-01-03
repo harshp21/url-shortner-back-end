@@ -13,7 +13,7 @@ const dbName: string = 'short_url';
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cors({
-    origin: 'http://127.0.0.1:5500'
+    origin: 'https://nervous-lalande-79b935.netlify.app'
 }))
 
 app.post('/shorten-url', async (req: Request, res: Response) => {
