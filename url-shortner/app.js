@@ -51,7 +51,7 @@ var dbName = 'short_url';
 app.use(body_parser_1.default.urlencoded({ extended: true }));
 app.use(body_parser_1.default.json());
 app.use(cors_1.default({
-    origin: 'http://127.0.0.1:5500'
+    origin: 'https://nervous-lalande-79b935.netlify.app'
 }));
 app.post('/shorten-url', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
     var connection, url_1, db, urlData, urlShortener, shortUrl, urlData_1, err_1;
