@@ -45,16 +45,20 @@ var UniqueShortIdGenerator_service_1 = require("./src/services/UniqueShortIdGene
 var mongodb_1 = require("mongodb");
 var valid_url_1 = __importDefault(require("valid-url"));
 var cors_1 = __importDefault(require("cors"));
+var dns_1 = __importDefault(require("dns"));
+// mongo db config
 var app = express_1.default();
 var url = 'mongodb+srv://harsh:harsh123@cluster0.vjrm0.mongodb.net/<dbname>?retryWrites=true&w=majority';
 var dbName = 'short_url';
+//middleware
 app.use(body_parser_1.default.urlencoded({ extended: true }));
 app.use(body_parser_1.default.json());
 app.use(cors_1.default({
-    origin: 'https://nervous-lalande-79b935.netlify.app'
+    origin: 'http://127.0.0.1:5500'
 }));
+//validate the url, after validation shortern the url and send it to the user and save in the db
 app.post('/shorten-url', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var connection, url_1, db, urlData, urlShortener, shortUrl, urlData_1, err_1;
+    var connection, url_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0:
@@ -62,60 +66,78 @@ app.post('/shorten-url', function (req, res) { return __awaiter(void 0, void 0, 
                 return [4 /*yield*/, mongodb_1.MongoClient.connect(url, { useUnifiedTopology: true })];
             case 1:
                 connection = _a.sent();
-                _a.label = 2;
-            case 2:
-                _a.trys.push([2, 9, 10, 11]);
-                if (!valid_url_1.default.isUri(req.body.url)) return [3 /*break*/, 7];
-                url_1 = req.body.url;
-                db = connection.db(dbName);
-                return [4 /*yield*/, db.collection('url').findOne({ url: url_1 })];
-            case 3:
-                urlData = _a.sent();
-                if (!urlData) return [3 /*break*/, 4];
-                res.json({
-                    message: 'Shortern Url Already Exists',
-                    data: urlData
-                });
-                return [3 /*break*/, 6];
-            case 4:
-                urlShortener = new UniqueShortIdGenerator_service_1.UniqueShortIdGeneratorService();
-                shortUrl = urlShortener.generateUniqueId();
-                urlData_1 = {
-                    url: url_1,
-                    shortUrl: shortUrl,
-                    clicks: 0
-                };
-                return [4 /*yield*/, db.collection('url').insertOne(urlData_1)];
-            case 5:
-                _a.sent();
-                res.json({
-                    message: "Short url generated Successfully",
-                    data: urlData_1,
-                });
-                _a.label = 6;
-            case 6: return [3 /*break*/, 8];
-            case 7:
-                res.status(400).json({
-                    message: 'Please enter a valid Url'
-                });
-                _a.label = 8;
-            case 8: return [3 /*break*/, 11];
-            case 9:
-                err_1 = _a.sent();
-                res.status(401).json({
-                    message: 'Some Error Occured',
-                    data: err_1
-                });
-                return [3 /*break*/, 11];
-            case 10:
-                connection.close();
-                return [7 /*endfinally*/];
-            case 11: return [2 /*return*/];
+                try {
+                    // check if it is in valid url format
+                    if (valid_url_1.default.isUri(req.body.url)) {
+                        url_1 = new URL(req.body.url);
+                        //check if domain name exists
+                        dns_1.default.lookup(url_1.hostname, { all: true }, function (error, results) { return __awaiter(void 0, void 0, void 0, function () {
+                            var url_2, db, urlData, urlShortener, shortUrl, urlData_1;
+                            return __generator(this, function (_a) {
+                                switch (_a.label) {
+                                    case 0:
+                                        if (!error) return [3 /*break*/, 1];
+                                        res.status(400).json({
+                                            message: 'Domain Does not exists',
+                                        });
+                                        return [3 /*break*/, 7];
+                                    case 1:
+                                        url_2 = req.body.url;
+                                        db = connection.db(dbName);
+                                        return [4 /*yield*/, db.collection('url').findOne({ url: url_2 })];
+                                    case 2:
+                                        urlData = _a.sent();
+                                        if (!urlData) return [3 /*break*/, 3];
+                                        res.json({
+                                            message: 'Shortern Url Already Exists',
+                                            data: urlData
+                                        });
+                                        return [3 /*break*/, 5];
+                                    case 3:
+                                        urlShortener = new UniqueShortIdGenerator_service_1.UniqueShortIdGeneratorService();
+                                        shortUrl = urlShortener.generateUniqueId();
+                                        urlData_1 = {
+                                            url: url_2,
+                                            shortUrl: shortUrl,
+                                            clicks: 0
+                                        };
+                                        return [4 /*yield*/, db.collection('url').insertOne(urlData_1)];
+                                    case 4:
+                                        _a.sent();
+                                        res.json({
+                                            message: "Short url generated Successfully",
+                                            data: urlData_1,
+                                        });
+                                        _a.label = 5;
+                                    case 5: return [4 /*yield*/, connection.close()];
+                                    case 6:
+                                        _a.sent();
+                                        _a.label = 7;
+                                    case 7: return [2 /*return*/];
+                                }
+                            });
+                        }); });
+                    }
+                    else {
+                        res.status(400).json({
+                            message: 'Please enter a valid Url'
+                        });
+                    }
+                }
+                catch (err) {
+                    console.log(err);
+                    res.status(401).json({
+                        message: 'Some Error Occured',
+                        data: err
+                    });
+                }
+                return [2 /*return*/];
         }
     });
 }); });
+// redirect url if the short url has valid url mapping
 app.get('/redirect-url/:shortUrl', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var connection, db, urlData, err_2;
+    var connection, db, urlData, err_1;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, mongodb_1.MongoClient.connect(url, { useUnifiedTopology: true })];
@@ -129,8 +151,10 @@ app.get('/redirect-url/:shortUrl', function (req, res) { return __awaiter(void 0
             case 3:
                 urlData = _a.sent();
                 if (!urlData) return [3 /*break*/, 5];
+                //update click count in db 
                 return [4 /*yield*/, db.collection('url').updateOne({ _id: urlData._id }, { $set: { clicks: ++urlData.clicks } })];
             case 4:
+                //update click count in db 
                 _a.sent();
                 res.json({
                     message: "SuccessFully fetched Redirect Data",
@@ -144,10 +168,10 @@ app.get('/redirect-url/:shortUrl', function (req, res) { return __awaiter(void 0
                 _a.label = 6;
             case 6: return [3 /*break*/, 9];
             case 7:
-                err_2 = _a.sent();
+                err_1 = _a.sent();
                 res.status(401).json({
                     message: 'Some Error Occured',
-                    data: err_2
+                    data: err_1
                 });
                 return [3 /*break*/, 9];
             case 8:
@@ -157,8 +181,9 @@ app.get('/redirect-url/:shortUrl', function (req, res) { return __awaiter(void 0
         }
     });
 }); });
+// get all url details for the user
 app.get('/url-data', function (req, res) { return __awaiter(void 0, void 0, void 0, function () {
-    var connection, db, urlData, err_3;
+    var connection, db, urlData, err_2;
     return __generator(this, function (_a) {
         switch (_a.label) {
             case 0: return [4 /*yield*/, mongodb_1.MongoClient.connect(url, { useUnifiedTopology: true })];
@@ -177,10 +202,10 @@ app.get('/url-data', function (req, res) { return __awaiter(void 0, void 0, void
                 });
                 return [3 /*break*/, 6];
             case 4:
-                err_3 = _a.sent();
+                err_2 = _a.sent();
                 res.status(401).json({
                     message: 'Some Error Occured',
-                    data: err_3
+                    data: err_2
                 });
                 return [3 /*break*/, 6];
             case 5:
@@ -190,4 +215,5 @@ app.get('/url-data', function (req, res) { return __awaiter(void 0, void 0, void
         }
     });
 }); });
+//listen on port
 app.listen(process.env.PORT || 3000);
