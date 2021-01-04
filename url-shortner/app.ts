@@ -18,7 +18,7 @@ const dbName: string = 'short_url';
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cors({
-    origin: 'http://127.0.0.1:5500'
+    origin: 'https://nervous-lalande-79b935.netlify.app'
 }))
 
 //validate the url, after validation shortern the url and send it to the user and save in the db
