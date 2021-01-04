@@ -5,6 +5,8 @@ import { UniqueShortIdGeneratorService } from './src/services/UniqueShortIdGener
 import { mongodb, MongoClient } from 'mongodb';
 import validUrl from 'valid-url';
 import cors from 'cors';
+import { lookup } from 'dns-lookup-cache';
+import dns from 'dns';
 
 const app: Application = express();
 const url: string = 'mongodb+srv://harsh:harsh123@cluster0.vjrm0.mongodb.net/<dbname>?retryWrites=true&w=majority';
@@ -13,7 +15,7 @@ const dbName: string = 'short_url';
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cors({
-    origin: 'https://nervous-lalande-79b935.netlify.app'
+    origin: 'http://127.0.0.1:5500'
 }))
 
 app.post('/shorten-url', async (req: Request, res: Response) => {
@@ -21,28 +23,39 @@ app.post('/shorten-url', async (req: Request, res: Response) => {
     let connection = await MongoClient.connect(url, { useUnifiedTopology: true });
     try {
         if (validUrl.isUri(req.body.url)) {
-            let url: string = req.body.url;
-            let db = connection.db(dbName);
-            let urlData = await db.collection('url').findOne({ url: url });
-            if (urlData) {
-                res.json({
-                    message: 'Shortern Url Already Exists',
-                    data: urlData
-                });
-            } else {
-                let urlShortener: UniqueShortIdGeneratorService = new UniqueShortIdGeneratorService();
-                let shortUrl: string = urlShortener.generateUniqueId();
-                let urlData = {
-                    url,
-                    shortUrl,
-                    clicks: 0
+            let url = new URL(req.body.url);
+            dns.lookup(url.hostname, { all: true }, async (error, results) => {
+                if (error) {
+                    res.status(400).json({
+                        message: 'Domain Does not exists',
+                    });
+                } else {
+                    let url: string = req.body.url;
+                    let db = connection.db(dbName);
+                    let urlData = await db.collection('url').findOne({ url: url });
+                    if (urlData) {
+                        res.json({
+                            message: 'Shortern Url Already Exists',
+                            data: urlData
+                        });
+                    } else {
+                        let urlShortener: UniqueShortIdGeneratorService = new UniqueShortIdGeneratorService();
+                        let shortUrl: string = urlShortener.generateUniqueId();
+                        let urlData = {
+                            url,
+                            shortUrl,
+                            clicks: 0
+                        };
+                        await db.collection('url').insertOne(urlData);
+                        res.json({
+                            message: "Short url generated Successfully",
+                            data: urlData,
+                        });
+                    }
+                    await connection.close();
                 }
-                await db.collection('url').insertOne(urlData);
-                res.json({
-                    message: "Short url generated Successfully",
-                    data: urlData,
-                });
-            }
+            });
+
         } else {
             res.status(400).json({
                 message: 'Please enter a valid Url'
@@ -50,12 +63,11 @@ app.post('/shorten-url', async (req: Request, res: Response) => {
         }
 
     } catch (err) {
+        console.log(err);
         res.status(401).json({
             message: 'Some Error Occured',
             data: err
         })
-    } finally {
-        connection.close();
     }
 })
 
@@ -105,4 +117,4 @@ app.get('/url-data', async (req: Request, res: Response) => {
     }
 })
 
-app.listen(process.env.PORT || 3000);
+app.listen(3000);
